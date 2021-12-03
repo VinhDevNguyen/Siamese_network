@@ -210,3 +210,4 @@ if __name__ == "__main__":
     siamese_model = SiameseModel(siamese_network)
     siamese_model.compile(optimizer=optimizers.Adam(0.0001))
     siamese_model.fit(train_dataset, epochs=200, validation_data=val_dataset, callbacks=[WandbCallback()])
+    siamese_model.save('./model.h5')
