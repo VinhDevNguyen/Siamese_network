@@ -38,65 +38,6 @@ def preprocess_triplets(anchor, positive, negative):
         preprocess_image(positive),
         preprocess_image(negative),
     )
-# We need to make sure both the anchor and positive images are loaded in
-# sorted order so we can match them together.
-anchor_images = sorted(
-    [str(anchor_images_path / f) for f in os.listdir(anchor_images_path)]
-)
-
-positive_images = sorted(
-    [str(positive_images_path / f) for f in os.listdir(positive_images_path)]
-)
-
-image_count = len(anchor_images)
-
-anchor_dataset = tf.data.Dataset.from_tensor_slices(anchor_images)
-positive_dataset = tf.data.Dataset.from_tensor_slices(positive_images)
-
-# To generate the list of negative images, let's randomize the list of
-# available images and concatenate them together.
-rng = np.random.RandomState(seed=42)
-rng.shuffle(anchor_images)
-rng.shuffle(positive_images)
-
-negative_images = anchor_images + positive_images
-np.random.RandomState(seed=32).shuffle(negative_images)
-
-negative_dataset = tf.data.Dataset.from_tensor_slices(negative_images)
-negative_dataset = negative_dataset.shuffle(buffer_size=4096)
-
-dataset = tf.data.Dataset.zip((anchor_dataset, positive_dataset, negative_dataset))
-dataset = dataset.shuffle(buffer_size=1024)
-dataset = dataset.map(preprocess_triplets)
-
-# Let's now split our dataset in train and validation.
-train_dataset = dataset.take(round(image_count * 0.8))
-val_dataset = dataset.skip(round(image_count * 0.8))
-
-train_dataset = train_dataset.batch(32, drop_remainder=False)
-train_dataset = train_dataset.prefetch(8)
-
-val_dataset = val_dataset.batch(32, drop_remainder=False)
-val_dataset = val_dataset.prefetch(8)
-
-base_cnn = resnet.ResNet50(
-    weights="imagenet", input_shape=target_shape + (3,), include_top=False
-)
-
-flatten = layers.Flatten()(base_cnn.output)
-dense1 = layers.Dense(512, activation="relu")(flatten)
-dense1 = layers.BatchNormalization()(dense1)
-dense2 = layers.Dense(256, activation="relu")(dense1)
-dense2 = layers.BatchNormalization()(dense2)
-output = layers.Dense(256)(dense2)
-
-embedding = Model(base_cnn.input, output, name="Embedding")
-
-trainable = False
-for layer in base_cnn.layers:
-    if layer.name == "conv5_block1_out":
-        trainable = True
-    layer.trainable = trainable
 
 
 class DistanceLayer(layers.Layer):
@@ -201,10 +142,70 @@ if __name__ == "__main__":
 
     target_shape = (200, 200)
     wandb.init(project="zalo")
-
+    
     cache_dir = Path(Path.home()) / "data"
     anchor_images_path = cache_dir / "hum_img"
     positive_images_path = cache_dir / "vocal_img"
+
+    # We need to make sure both the anchor and positive images are loaded in
+    # sorted order so we can match them together.
+    anchor_images = sorted(
+        [str(anchor_images_path / f) for f in os.listdir(anchor_images_path)]
+    )
+
+    positive_images = sorted(
+        [str(positive_images_path / f) for f in os.listdir(positive_images_path)]
+    )
+
+    image_count = len(anchor_images)
+
+    anchor_dataset = tf.data.Dataset.from_tensor_slices(anchor_images)
+    positive_dataset = tf.data.Dataset.from_tensor_slices(positive_images)
+
+    # To generate the list of negative images, let's randomize the list of
+    # available images and concatenate them together.
+    rng = np.random.RandomState(seed=42)
+    rng.shuffle(anchor_images)
+    rng.shuffle(positive_images)
+
+    negative_images = anchor_images + positive_images
+    np.random.RandomState(seed=32).shuffle(negative_images)
+
+    negative_dataset = tf.data.Dataset.from_tensor_slices(negative_images)
+    negative_dataset = negative_dataset.shuffle(buffer_size=4096)
+
+    dataset = tf.data.Dataset.zip((anchor_dataset, positive_dataset, negative_dataset))
+    dataset = dataset.shuffle(buffer_size=1024)
+    dataset = dataset.map(preprocess_triplets)
+
+    # Let's now split our dataset in train and validation.
+    train_dataset = dataset.take(round(image_count * 0.8))
+    val_dataset = dataset.skip(round(image_count * 0.8))
+
+    train_dataset = train_dataset.batch(32, drop_remainder=False)
+    train_dataset = train_dataset.prefetch(8)
+
+    val_dataset = val_dataset.batch(32, drop_remainder=False)
+    val_dataset = val_dataset.prefetch(8)
+
+    base_cnn = resnet.ResNet50(
+        weights="imagenet", input_shape=target_shape + (3,), include_top=False
+    )
+
+    flatten = layers.Flatten()(base_cnn.output)
+    dense1 = layers.Dense(512, activation="relu")(flatten)
+    dense1 = layers.BatchNormalization()(dense1)
+    dense2 = layers.Dense(256, activation="relu")(dense1)
+    dense2 = layers.BatchNormalization()(dense2)
+    output = layers.Dense(256)(dense2)
+
+    embedding = Model(base_cnn.input, output, name="Embedding")
+
+    trainable = False
+    for layer in base_cnn.layers:
+        if layer.name == "conv5_block1_out":
+            trainable = True
+        layer.trainable = trainable
 
     siamese_model = SiameseModel(siamese_network)
     siamese_model.compile(optimizer=optimizers.Adam(0.0001))
