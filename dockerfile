@@ -1,5 +1,8 @@
 FROM tensorflow/tensorflow:2.6.0-gpu
 
+WORKDIR /app
+COPY ./requirements.txt /app
+
 WORKDIR /workdir
 
 RUN pip install -r requirements.txt
