@@ -56,21 +56,6 @@ class DistanceLayer(layers.Layer):
         return (ap_distance, an_distance)
 
 
-anchor_input = layers.Input(name="anchor", shape=target_shape + (3,))
-positive_input = layers.Input(name="positive", shape=target_shape + (3,))
-negative_input = layers.Input(name="negative", shape=target_shape + (3,))
-
-distances = DistanceLayer()(
-    embedding(resnet.preprocess_input(anchor_input)),
-    embedding(resnet.preprocess_input(positive_input)),
-    embedding(resnet.preprocess_input(negative_input)),
-)
-
-siamese_network = Model(
-    inputs=[anchor_input, positive_input, negative_input], outputs=distances
-)
-
-
 class SiameseModel(Model):
     """The Siamese Network model with a custom training and testing loops.
 
@@ -142,10 +127,15 @@ if __name__ == "__main__":
 
     target_shape = (200, 200)
     wandb.init(project="zalo")
-    
+
     cache_dir = Path(Path.home()) / "data"
     anchor_images_path = cache_dir / "hum_img"
     positive_images_path = cache_dir / "vocal_img"
+
+    anchor_input = layers.Input(name="anchor", shape=target_shape + (3,))
+    positive_input = layers.Input(name="positive", shape=target_shape + (3,))
+    negative_input = layers.Input(name="negative", shape=target_shape + (3,))
+
 
     # We need to make sure both the anchor and positive images are loaded in
     # sorted order so we can match them together.
@@ -200,6 +190,16 @@ if __name__ == "__main__":
     output = layers.Dense(256)(dense2)
 
     embedding = Model(base_cnn.input, output, name="Embedding")
+
+    distances = DistanceLayer()(
+    embedding(resnet.preprocess_input(anchor_input)),
+    embedding(resnet.preprocess_input(positive_input)),
+    embedding(resnet.preprocess_input(negative_input)),
+        )
+
+siamese_network = Model(
+    inputs=[anchor_input, positive_input, negative_input], outputs=distances
+        )
 
     trainable = False
     for layer in base_cnn.layers:
