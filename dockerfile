@@ -15,3 +15,5 @@ RUN mkdir /workdir/data
 
 RUN unzip hum_img.zip -d /workdir/data/
 RUN unzip vocal_img.zip -d /workdir/data/
+
+WORKDIR /app
