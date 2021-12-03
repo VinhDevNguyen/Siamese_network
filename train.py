@@ -128,7 +128,7 @@ if __name__ == "__main__":
     target_shape = (200, 200)
     wandb.init(project="zalo")
 
-    cache_dir = Path("workdir") / "data"
+    cache_dir = Path("/workdir") / "data"
     anchor_images_path = cache_dir / "hum_img"
     positive_images_path = cache_dir / "vocal_img"
 
