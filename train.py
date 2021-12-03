@@ -197,7 +197,7 @@ if __name__ == "__main__":
     embedding(resnet.preprocess_input(negative_input)),
         )
 
-siamese_network = Model(
+    siamese_network = Model(
     inputs=[anchor_input, positive_input, negative_input], outputs=distances
         )
 
