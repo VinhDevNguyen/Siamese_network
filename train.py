@@ -206,8 +206,12 @@ if __name__ == "__main__":
         if layer.name == "conv5_block1_out":
             trainable = True
         layer.trainable = trainable
+    checkpoint_path = "training_1/cp.ckpt"
+    checkpoint_dir = os.path.dirname(checkpoint_path)
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                    save_weights_only=True,
+                                                    verbose=1)
 
     siamese_model = SiameseModel(siamese_network)
     siamese_model.compile(optimizer=optimizers.Adam(0.0001))
-    siamese_model.fit(train_dataset, epochs=200, validation_data=val_dataset, callbacks=[WandbCallback()])
-    siamese_model.save('./model.h5')
+    siamese_model.fit(train_dataset, epochs=1000, validation_data=val_dataset, callbacks=[WandbCallback(), cp_callback])
